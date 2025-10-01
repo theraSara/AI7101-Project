@@ -1,3 +1,4 @@
+
 import os, json
 import joblib
 import numpy as np
@@ -73,6 +74,11 @@ def train_random_forest():
     print("Validation Confusion Matrix:\n", metrics["val"]["confusion_matrix"])
     print("Validation Classification Report:\n", json.dumps(metrics["val"]["classification_report"], indent=2))
     
+
+# ~\OneDrive\Documents\uni\AI7101-Project\.venv\Scripts\python.exe
+
 if __name__ == "__main__":
     train_random_forest()
-    
+
+
+# src/run_experiments.py
