@@ -22,7 +22,7 @@ def load_data(file_path=DATA_DIR, target=TARGET):
     test = pd.read_csv(os.path.join(file_path, 'test_processed.csv'))
     return train, val, test
 
-def train_random_forest():
+def train_logistic_regression():
     train, val, test = load_data()
     
     X_train, y_train = train.drop(columns=[TARGET]), train[TARGET]
@@ -80,7 +80,7 @@ def train_random_forest():
 # ~\OneDrive\Documents\uni\AI7101-Project\.venv\Scripts\python.exe
 
 if __name__ == "__main__":
-    train_random_forest()
+    train_logistic_regression()
 
 
 # src/run_experiments.py
