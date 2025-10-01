@@ -1,4 +1,4 @@
-# Customer Churn Prediction
+# Customer (Expresso) Churn Prediction
 
 ##  Overview
 This project aims to **predict customer churn** in the telecom domain using **machine learning techniques**.  
