@@ -167,33 +167,6 @@ def exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
         "threshold": thr,
     }
 
-def exp_logreg_l1(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
-    """Optional: L1 Logistic Regression (no FS), handy as a compact embedded selector baseline."""
-    pipe = Pipeline([
-        ("clf", LogisticRegression(
-            penalty="l1", solver="liblinear", class_weight="balanced", random_state=SEED, max_iter=2000
-        ))
-    ])
-    param_grid = {"clf__C": [0.1, 0.5, 1.0, 2.0]}
-    gs = GridSearchCV(
-        pipe, 
-        param_grid=param_grid, 
-        scoring="roc_auc",
-        cv=make_cv(cv_folds), 
-        n_jobs=n_jobs_grid, 
-        verbose=2, 
-        pre_dispatch="1*n_jobs"
-    )
-    
-    gs.fit(X_train, y_train)
-    best = gs.best_estimator_
-    val_proba = best.predict_proba(X_val)[:, 1]
-    thr = choose_threshold_by_f1(y_val, val_proba)
-    return best, {
-        "search_best_params": gs.best_params_,
-        "val_metrics": evaluate_probs(y_val, val_proba, thr),
-        "threshold": thr,
-    }
 
 # ----------------------------- main -----------------------------
 def main():
@@ -205,7 +178,6 @@ def main():
     parser.add_argument("--run_filter",   action="store_true", help="Run SelectKBest filter experiment")
     parser.add_argument("--run_wrapper",  action="store_true", help="Run RFE wrapper experiment")
     parser.add_argument("--run_embedded", action="store_true", help="Run SelectFromModel embedded experiment")
-    parser.add_argument("--run_l1",       action="store_true", help="Run L1 Logistic Regression baseline")
     parser.add_argument("--skip_baseline", action="store_true", help="Skip fitting the fixed RF baseline")
     args = parser.parse_args()
 
@@ -250,15 +222,6 @@ def main():
         print("[Embedded] val:", info["val_metrics"], "\n[Embedded] test:", info["test_metrics"])
         save_artifacts("rf_embedded_sfm", m, X_train.columns, info, out_dir=args.models_dir)
         results["rf_embedded_sfm"] = info
-
-    # Optional: L1 Logistic
-    if args.run_l1:
-        print("\n=== L1 Logistic Regression ===")
-        m, info = exp_logreg_l1(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs)
-        info["test_metrics"] = evaluate_probs(y_test, m.predict_proba(X_test)[:, 1], info["threshold"])
-        print("[L1] val:", info["val_metrics"], "\n[L1] test:", info["test_metrics"])
-        save_artifacts("logreg_l1", m, X_train.columns, info, out_dir=args.models_dir)
-        results["logreg_l1"] = info
 
     # Save summary
     os.makedirs(args.models_dir, exist_ok=True)
