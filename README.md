@@ -10,14 +10,6 @@ We experiment with three families of models:
 - **Gradient Boosting** (XGBoost/LightGBM, powerful non-linear learners)
 
 We also evaluate multiple **feature selection strategies** (Filter, Wrapper, Embedded) and compare their impact on predictive performance.
-
----
-
-##  Team
-- **Sara**  
-- **Mai**  
-- **Yining**
-
 ---
 
 ## Project Structure
