@@ -4,11 +4,9 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, roc_auc_score, f1_score, confusion_matrix, average_precision_score
-from ..utils import set_seed
+from .utils import set_seed
 
 SEED = 42
 set_seed(SEED)
@@ -28,31 +26,31 @@ def train_logistic_regression():
     X_train, y_train = train.drop(columns=[TARGET]), train[TARGET]
     X_val, y_val = val.drop(columns=[TARGET]), val[TARGET]
     
-    pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("logreg", LogisticRegression(random_state=42, max_iter=1000, solver="liblinear"))
-    ])
+    rf = RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced')
 
     param_grid = {
-        "logreg__class_weight": [None, "balanced", {0: 1, 1: 10}, {0: 1, 1: 20}],
+        "n_estimators": [200, 500],
+        "max_depth": [10, 20],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 2],
     }
-
+    
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
-
+    
     grid = GridSearchCV(
-        estimator=pipeline,
+        estimator=rf,
         param_grid=param_grid,
         scoring="roc_auc",
         cv=cv,
         n_jobs=-1,
         verbose=2,
     )
-
+    
     grid.fit(X_train, y_train)
-    best_pipeline = grid.best_estimator_
-    val_probas = best_pipeline.predict_proba(X_val)[:, 1]
+    best_rf = grid.best_estimator_
+    val_probas = best_rf.predict_proba(X_val)[:, 1]
     val_preds = (val_probas >= 0.5).astype(int)
-        
+    
     metrics = {
         "best_params": grid.best_params_,
         "val": {
@@ -65,8 +63,8 @@ def train_logistic_regression():
     }
     
     os.makedirs('models', exist_ok=True)
-    joblib.dump(best_rf, 'models/random_forest_model.joblib')
-    with open('models/random_forest_metrics.json', 'w') as f:
+    joblib.dump(best_rf, 'models/logistic_regression_model.joblib')
+    with open('models/logistic_regression_model.json', 'w') as f:
         json.dump(metrics, f, indent=2)
         
     print("Best Hyperparameters:", grid.best_params_)
@@ -79,4 +77,3 @@ def train_logistic_regression():
 
 if __name__ == "__main__":
     train_logistic_regression()
-
