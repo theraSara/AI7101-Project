@@ -1,13 +1,16 @@
-import os, json
+import os
+import json
 import joblib
 import numpy as np
 import pandas as pd
+
+from src.utils import set_seed, load_splits
+
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import classification_report, roc_auc_score, f1_score, confusion_matrix, average_precision_score
-from ..utils import set_seed
-
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, f_classif
+
 from xgboost import XGBClassifier
 
 
@@ -24,12 +27,8 @@ def load_data(file_path=DATA_DIR, target=TARGET):
     return train, val, test
 
 def train_xgboost():
-    train, val, test = load_data()
+    X_train, y_train, X_val, y_val, X_test, y_test = load_splits(DATA_DIR)
     
-    X_train, y_train = train.drop(columns=[TARGET]), train[TARGET]
-    X_val, y_val = val.drop(columns=[TARGET]), val[TARGET]
-
-    # pipeline
     pipe = Pipeline([
         ('select', SelectKBest(score_func=f_classif, k=39)),
         ('xgb', XGBClassifier(

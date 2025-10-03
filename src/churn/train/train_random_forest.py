@@ -1,12 +1,14 @@
 
-import os, json
+import os
+import json
 import joblib
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import StratifiedKFold, GridSearchCV
+
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import classification_report, roc_auc_score, f1_score, confusion_matrix, average_precision_score
-from ..utils import set_seed
+
+from src.utils import set_seed, load_splits
+
 
 SEED = 42
 set_seed(SEED)
@@ -14,18 +16,10 @@ set_seed(SEED)
 TARGET = 'CHURN'
 DATA_DIR = 'data/processed'
 
-def load_data(file_path=DATA_DIR, target=TARGET):
-    train = pd.read_csv(os.path.join(file_path, 'train_processed.csv'))
-    val = pd.read_csv(os.path.join(file_path, 'val_processed.csv'))
-    test = pd.read_csv(os.path.join(file_path, 'test_processed.csv'))
-    return train, val, test
 
 def train_random_forest():
-    train, val, test = load_data()
-    
-    X_train, y_train = train.drop(columns=[TARGET]), train[TARGET]
-    X_val, y_val = val.drop(columns=[TARGET]), val[TARGET]
-    
+    X_train, y_train, X_val, y_val, X_test, y_test = load_splits(DATA_DIR)
+
     rf = RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced')
 
     param_grid = {
