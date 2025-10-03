@@ -13,11 +13,10 @@ from sklearn.metrics import (
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, f_classif, RFE, SelectFromModel
-from sklearn.linear_model import LogisticRegression
 
 SEED = 42
 TARGET = "CHURN"
-DATA_DIR = "data/no_new_features"
+DATA_DIR = "data/processed"
 MODELS_DIR = "models"
 
 # >>> Freeze the best RF params 
@@ -33,9 +32,9 @@ BEST_RF_PARAMS = {
 
 # ----------------------------- utils -----------------------------
 def load_splits(data_dir: str = DATA_DIR, target: str = TARGET):
-    train = pd.read_csv(os.path.join(data_dir, "train_no_new_features.csv")) 
-    val   = pd.read_csv(os.path.join(data_dir, "val_no_new_features.csv"))
-    test  = pd.read_csv(os.path.join(data_dir, "test_no_new_features.csv"))
+    train = pd.read_csv(os.path.join(data_dir, "train_processed.csv")) 
+    val   = pd.read_csv(os.path.join(data_dir, "val_processed.csv"))
+    test  = pd.read_csv(os.path.join(data_dir, "test_processed.csv"))
 
     X_train, y_train = train.drop(columns=[target]), train[target].astype(int)
     X_val,   y_val   = val.drop(columns=[target]),   val[target].astype(int)
@@ -44,8 +43,8 @@ def load_splits(data_dir: str = DATA_DIR, target: str = TARGET):
 
 def evaluate_probs(y_true, probs, thr=0.5):
     preds = (probs >= thr).astype(int)
-    roc  = roc_auc_score(y_true, probs)
-    pr   = average_precision_score(y_true, probs)
+    roc = roc_auc_score(y_true, probs)
+    pr = average_precision_score(y_true, probs)
     prec, rec, f1, _ = precision_recall_fscore_support(y_true, preds, average="binary", zero_division=0)
     return {"roc_auc": float(roc), "pr_auc": float(pr), "precision": float(prec), "recall": float(rec), "f1": float(f1)}
 

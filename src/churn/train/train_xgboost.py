@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import classification_report, roc_auc_score, f1_score, confusion_matrix, average_precision_score
-from .utils import set_seed
+from ..utils import set_seed
 
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, f_classif

@@ -4,9 +4,15 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
+<<<<<<< HEAD
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+=======
 from sklearn.ensemble import RandomForestClassifier
+>>>>>>> f523343 (WIP: local eval + scripts updates)
 from sklearn.metrics import classification_report, roc_auc_score, f1_score, confusion_matrix, average_precision_score
-from .utils import set_seed
+from ..utils import set_seed
 
 SEED = 42
 set_seed(SEED)
@@ -20,12 +26,27 @@ def load_data(file_path=DATA_DIR, target=TARGET):
     test = pd.read_csv(os.path.join(file_path, 'test_processed.csv'))
     return train, val, test
 
-def train_random_forest():
+def train_logistic_regression():
     train, val, test = load_data()
     
     X_train, y_train = train.drop(columns=[TARGET]), train[TARGET]
     X_val, y_val = val.drop(columns=[TARGET]), val[TARGET]
     
+<<<<<<< HEAD
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("logreg", LogisticRegression(random_state=42, max_iter=1000, solver="liblinear"))
+    ])
+
+    param_grid = {
+        "logreg__class_weight": [None, "balanced", {0: 1, 1: 10}, {0: 1, 1: 20}],
+    }
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+
+    grid = GridSearchCV(
+        estimator=pipeline,
+=======
     rf = RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced')
 
     param_grid = {
@@ -39,18 +60,28 @@ def train_random_forest():
     
     grid = GridSearchCV(
         estimator=rf,
+>>>>>>> f523343 (WIP: local eval + scripts updates)
         param_grid=param_grid,
         scoring="roc_auc",
         cv=cv,
         n_jobs=-1,
         verbose=2,
     )
+<<<<<<< HEAD
+
+    grid.fit(X_train, y_train)
+    best_pipeline = grid.best_estimator_
+    val_probas = best_pipeline.predict_proba(X_val)[:, 1]
+    val_preds = (val_probas >= 0.5).astype(int)
+        
+=======
     
     grid.fit(X_train, y_train)
     best_rf = grid.best_estimator_
     val_probas = best_rf.predict_proba(X_val)[:, 1]
     val_preds = (val_probas >= 0.5).astype(int)
     
+>>>>>>> f523343 (WIP: local eval + scripts updates)
     metrics = {
         "best_params": grid.best_params_,
         "val": {
@@ -75,7 +106,16 @@ def train_random_forest():
     print("Validation Classification Report:\n", json.dumps(metrics["val"]["classification_report"], indent=2))
     
 
+<<<<<<< HEAD
+# ~\OneDrive\Documents\uni\AI7101-Project\.venv\Scripts\python.exe
 
 if __name__ == "__main__":
-    train_random_forest()
+    train_logistic_regression()
 
+
+# src/run_experiments.py
+=======
+
+if __name__ == "__main__":
+    train_logistic_regression()
+>>>>>>> f523343 (WIP: local eval + scripts updates)
