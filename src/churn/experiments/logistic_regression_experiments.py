@@ -27,7 +27,7 @@ BEST_LR_PARAMS = {
     "class_weight": None,
     "solver": "liblinear",
     "penalty":"l1",
-    "C":1.0,
+    "C": 0.1,
     "max_iter":1000,
     "random_state":SEED
 }
@@ -88,7 +88,11 @@ def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2
 
 def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     t0 = time.perf_counter()
-    rfe_base = build_fixed_logreg()
+    rfe_base = LogisticRegression(
+        solver="liblinear", penalty="l2",
+        C=BEST_LR_PARAMS["C"], class_weight=BEST_LR_PARAMS["class_weight"],
+        max_iter=BEST_LR_PARAMS["max_iter"], random_state=SEED
+    )
     pipe = Pipeline([
         ("scale", StandardScaler()),
         ("rfe",  RFE(estimator=rfe_base, n_features_to_select=25, step=0.2)),
