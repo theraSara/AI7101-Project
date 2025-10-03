@@ -14,7 +14,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
 )
 
-from src.utils import set_seed
+from utils import set_seed
 
 set_seed(42)
 
