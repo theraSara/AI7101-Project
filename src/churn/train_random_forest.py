@@ -29,9 +29,9 @@ def train_random_forest():
     rf = RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced')
 
     param_grid = {
-        "n_estimators": [100, 200, 500],
-        "max_depth": [None, 10, 20],
-        "min_samples_split": [2, 10],
+        "n_estimators": [200, 500],
+        "max_depth": [10, 20],
+        "min_samples_split": [2, 5, 10],
         "min_samples_leaf": [1, 2],
     }
     
@@ -75,10 +75,7 @@ def train_random_forest():
     print("Validation Classification Report:\n", json.dumps(metrics["val"]["classification_report"], indent=2))
     
 
-# ~\OneDrive\Documents\uni\AI7101-Project\.venv\Scripts\python.exe
 
 if __name__ == "__main__":
     train_random_forest()
 
-
-# src/run_experiments.py

@@ -5,85 +5,79 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from itertools import combinations
 
-def set_plot_theme(style: str = "whitegrid", context: str="talk", palette: str="Set2", font_scale: float=1.0) -> None:
-    sns.set_theme(style=style, context=context, palette=palette)
-    sns.set(rc={
-        "figure.autolayout": False, 
-        "axes.titlesize": "x-large",
-        "axes.labelsize": "large",
-        "xtick.labelsize": "medium",
-        "ytick.labelsize": "medium",
-        "legend.title_fontsize": "medium",
-        "legend.fontsize": "medium",
-    })
-    colors = sns.color_palette(palette)
-
+def set_plot_theme(style="whitegrid", context="talk", font_scale=1.2):
+    sns.set_theme(style=style, context=context, font_scale=font_scale)
+    # define consistent binary palette
+    colors = ["#4C72B0", "#DD8452"]  # blue, orange
     import matplotlib as mpl
-    mpl.rcParams['font.size'] = 10 * font_scale
     mpl.rcParams["axes.prop_cycle"] = mpl.cycler(color=colors)
-    mpl.rcParams["axes.titlesize"] = "x-large"
-    mpl.rcParams["axes.labelsize"] = "large"
-    mpl.rcParams["xtick.labelsize"] = "medium"
-    mpl.rcParams["ytick.labelsize"] = "medium"
-    mpl.rcParams["legend.title_fontsize"] = "medium"
-    mpl.rcParams["legend.fontsize"] = "medium"
+    return colors
 
-def plot_missing_values(df: pd.DataFrame, top_k: int | None = None):
-    missing_values = df.isnull().mean().sort_values(ascending=True)
+
+def plot_missing_values(df: pd.DataFrame, top_k: int | None = None, colors=None):
+    missing_values = df.isnull().mean().sort_values(ascending=False) * 100
     if top_k:
-        missing_values = missing_values.tail(top_k)
-    
-    ax = missing_values.plot.barh(figsize=(12, 6), color='skyblue')
-    ax.set_title("Missing Values Percentage")
-    ax.set_xlabel("Fraction missing")
+        missing_values = missing_values.head(top_k)
+        
+    fig, ax = plt.subplots(figsize=(10,6))
+    sns.barplot(x=missing_values.values, y=missing_values.index, palette=colors, ax=ax)
+    ax.set_title("Missing Values (%)")
+    ax.set_xlabel("Percentage missing")
     ax.set_ylabel("Feature")
     plt.tight_layout()
 
-def plot_distribution(df: pd.DataFrame, target: str):
-    ax = df[target].value_counts().plot.bar(figsize=(6, 4), color='skyblue')
-    ax.set_title(f"Distribution of {target}")
-    ax.set_xlabel(target)
-    ax.set_ylabel("Count")
+def plot_distribution(df: pd.DataFrame, target: str, use_pie=False, colors=None):
+    counts = df[target].value_counts()
+    if use_pie:
+        plt.figure(figsize=(5,5))
+        plt.pie(counts, labels=counts.index, autopct="%1.1f%%", colors=colors)
+        plt.title(f"Distribution of {target}")
+    else:
+        plt.figure(figsize=(6,4))
+        sns.barplot(x=counts.index, y=counts.values, palette=colors)
+        plt.title(f"Distribution of {target}")
+        plt.xlabel(target)
+        plt.ylabel("Count")
     plt.tight_layout()
 
-def plot_categorical_by_target(df: pd.DataFrame, target: str, categorical: list[str]):
-    n = len(categorical)
-    rows = (n + 1) // 2
-    fig, axes = plt.subplots(rows, 2, figsize=(16, 6 * rows))
+def plot_categoricals_by_target(df: pd.DataFrame, cat_features: list[str], target: str, colors=None):
+    n = len(cat_features)
+    cols = 4
+    valid_features = [c for c in cat_features if c in df.columns]
+    if not valid_features:
+        print("No valid categorical columns to plot.")
+        return
+
+    rows = math.ceil(len(valid_features) / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(5*cols, 5*rows))
     axes = axes.flatten()
 
-    for i, col in enumerate(categorical):
-        sns.countplot(data=df, x=col, hue=target, ax=axes[i],
-                      order=df[col].value_counts(dropna=False).index)
-        axes[i].set_title(f"Distribution of {col} by {target}")
-        axes[i].tick_params(axis='x', rotation=45)
-        axes[i].set_xlabel(col)
-        axes[i].set_ylabel("Count")
-
+    for i, col in enumerate(valid_features):
+        sns.countplot(
+            data=df, x=col, hue=target, palette=colors, ax=axes[i],
+            order=df[col].value_counts(dropna=False).index
+        )
+        axes[i].set_title(f"{col} by {target}")
+        axes[i].tick_params(axis="x", rotation=45)
         if axes[i].legend_:
             axes[i].legend_.set_title(target)
 
     for j in range(i+1, len(axes)):
         fig.delaxes(axes[j])
-    plt.tight_layout()
 
-def plot_numerical_box(df: pd.DataFrame, target: str, numerical: list[str]):
-    n = len(numerical)
-    fig, axes = plt.subplots(n, 2, figsize=(16, 6 * n))
-    # axes = axes.flatten()
+    plt.tight_layout()
+    plt.show()
+
+def plot_numerical_box(df, target: str, numerical: list[str], colors=None):
+    fig, axes = plt.subplots(len(numerical), 2, figsize=(16, 4*len(numerical)))
     for i, col in enumerate(numerical):
-        sns.histplot(df[col], kde=True, bins=30, ax=axes[i, 0])
-        axes[i, 0].set_title(f"Distribution of {col}")
-        axes[i, 0].set_xlabel(col)
-        axes[i, 0].set_ylabel("Count")
-
-        sns.boxplot(x=target, y=col, data=df, ax=axes[i, 1])
-        axes[i, 1].set_title(f"{col} by {target}")
-        axes[i, 1].set_xlabel(target)
-        axes[i, 1].set_ylabel(col)
+        sns.histplot(df[col], kde=True, bins=30, ax=axes[i,0], color=colors[0])
+        axes[i,0].set_title(f"Distribution of {col}")
+        sns.boxplot(x=target, y=col, data=df, ax=axes[i,1], palette=colors)
+        axes[i,1].set_title(f"{col} by {target}")
     plt.tight_layout()
 
-def plot_pairs(df: pd.DataFrame, target: str, features: list[str]):
+def plot_pairs(df: pd.DataFrame, target: str, features: list[str], colors=None):
     pairs = list(combinations(features, 2))
     n = len(pairs)
     rows = math.ceil(n / 2)

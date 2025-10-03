@@ -17,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 
 SEED = 42
 TARGET = "CHURN"
-DATA_DIR = "data/processed"
+DATA_DIR = "data/no_new_features"
 MODELS_DIR = "models"
 
 # >>> Freeze the best RF params 
@@ -33,9 +33,9 @@ BEST_RF_PARAMS = {
 
 # ----------------------------- utils -----------------------------
 def load_splits(data_dir: str = DATA_DIR, target: str = TARGET):
-    train = pd.read_csv(os.path.join(data_dir, "train_processed.csv"))
-    val   = pd.read_csv(os.path.join(data_dir, "val_processed.csv"))
-    test  = pd.read_csv(os.path.join(data_dir, "test_processed.csv"))
+    train = pd.read_csv(os.path.join(data_dir, "train_no_new_features.csv")) 
+    val   = pd.read_csv(os.path.join(data_dir, "val_no_new_features.csv"))
+    test  = pd.read_csv(os.path.join(data_dir, "test_no_new_features.csv"))
 
     X_train, y_train = train.drop(columns=[target]), train[target].astype(int)
     X_val,   y_val   = val.drop(columns=[target]),   val[target].astype(int)
@@ -74,7 +74,6 @@ def build_fixed_rf() -> RandomForestClassifier:
 
 # ----------------------------- baseline (fixed RF) -----------------------------
 def exp_fixed_rf_baseline(X_train, y_train, X_val, y_val):
-    """No hyperparam search; fit the frozen RF once to report baseline numbers."""
     rf = build_fixed_rf()
     rf.fit(X_train, y_train)
     val_proba = rf.predict_proba(X_val)[:, 1]
@@ -84,20 +83,21 @@ def exp_fixed_rf_baseline(X_train, y_train, X_val, y_val):
 
 # ----------------------------- feature selection experiments -----------------------------
 def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
-    """
-    Pipeline: SelectKBest(f_classif) -> Fixed RF
-    Grid over ONLY the selector (k). RF params are frozen.
-    """
     pipe = Pipeline([
-        ("select", SelectKBest(score_func=f_classif, k=30)),
+        ("select", SelectKBest(score_func=f_classif, k=25)),
         ("rf",    build_fixed_rf()),
     ])
     param_grid = {
-        "select__k": [20, 30, 39], 
+        "select__k": [20, 25, "all"], 
     }
     gs = GridSearchCV(
-        pipe, param_grid=param_grid, scoring="roc_auc",
-        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=1, pre_dispatch="1*n_jobs"
+        pipe, 
+        param_grid=param_grid, 
+        scoring="roc_auc",
+        cv=make_cv(cv_folds), 
+        n_jobs=n_jobs_grid, 
+        verbose=2, 
+        pre_dispatch="1*n_jobs"
     )
     gs.fit(X_train, y_train)
     best = gs.best_estimator_
@@ -109,23 +109,28 @@ def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2
         "threshold": thr,
     }
 
-def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
-    """
-    Pipeline: RFE(fixed RF) -> Fixed RF
-    Grid over ONLY n_features_to_select in RFE.
-    """
+def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):  
     base_rf_for_rfe = build_fixed_rf()
     pipe = Pipeline([
-        ("rfe",  RFE(estimator=base_rf_for_rfe, n_features_to_select=30, step=0.2)),
+        ("rfe",  RFE(estimator=base_rf_for_rfe, n_features_to_select=25, step=0.2)),
         ("rf",   build_fixed_rf()),
     ])
+    
+    n_all = X_train.shape[1]
     param_grid = {
-        "rfe__n_features_to_select": [20, 30, 39],
+        "rfe__n_features_to_select": [20, 30, n_all],
     }
+    
     gs = GridSearchCV(
-        pipe, param_grid=param_grid, scoring="roc_auc",
-        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=1, pre_dispatch="1*n_jobs"
+        pipe, 
+        param_grid=param_grid, 
+        scoring="roc_auc",
+        cv=make_cv(cv_folds), 
+        n_jobs=n_jobs_grid, 
+        verbose=2,
+        pre_dispatch="1*n_jobs"
     )
+    
     gs.fit(X_train, y_train)
     best = gs.best_estimator_
     val_proba = best.predict_proba(X_val)[:, 1]
@@ -150,7 +155,7 @@ def exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     }
     gs = GridSearchCV(
         pipe, param_grid=param_grid, scoring="roc_auc",
-        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=1, pre_dispatch="1*n_jobs"
+        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=2, pre_dispatch="1*n_jobs"
     )
     gs.fit(X_train, y_train)
     best = gs.best_estimator_
@@ -171,9 +176,15 @@ def exp_logreg_l1(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     ])
     param_grid = {"clf__C": [0.1, 0.5, 1.0, 2.0]}
     gs = GridSearchCV(
-        pipe, param_grid=param_grid, scoring="roc_auc",
-        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=1, pre_dispatch="1*n_jobs"
+        pipe, 
+        param_grid=param_grid, 
+        scoring="roc_auc",
+        cv=make_cv(cv_folds), 
+        n_jobs=n_jobs_grid, 
+        verbose=2, 
+        pre_dispatch="1*n_jobs"
     )
+    
     gs.fit(X_train, y_train)
     best = gs.best_estimator_
     val_proba = best.predict_proba(X_val)[:, 1]
