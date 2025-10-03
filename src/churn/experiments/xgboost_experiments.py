@@ -1,12 +1,12 @@
 from __future__ import annotations
 import os
 import json
+import time
 import argparse
 import warnings
-import time
 warnings.filterwarnings("ignore")
 
-from utils import set_seed, load_splits, choose_threshold_by_f1, make_cv, evaluate_probs, save_artifacts
+from src.utils import set_seed, load_splits, choose_threshold_by_f1, make_cv, evaluate_probs, save_artifacts
 
 from xgboost import XGBClassifier
 
@@ -21,7 +21,7 @@ set_seed(SEED)
 TARGET = "CHURN"
 DATA_DIR = "data/processed"
 MODELS_DIR = "models"
- 
+
 BEST_XGB_PARAMS = {
     "learning_rate": 0.1,
     "max_depth": 7,
@@ -37,12 +37,8 @@ BEST_XGB_PARAMS = {
     "verbosity": 0,
 }
 
-def build_fixed_xgb(overrides: dict | None=None) -> XGBClassifier:
-    params = BEST_XGB_PARAMS.copy()
-    if overrides:
-        cleaned = {k.split("__")[-1]: v for k, v in overrides.items()}
-        params.update(cleaned)
-    return XGBClassifier(**params)
+def build_fixed_xgb():
+    return XGBClassifier(**BEST_XGB_PARAMS)
 
 # ----------------------------- baseline (fixed XGB) -----------------------------
 def exp_fixed_xgb_baseline(X_train, y_train, X_val, y_val, overrides=None):
@@ -53,15 +49,20 @@ def exp_fixed_xgb_baseline(X_train, y_train, X_val, y_val, overrides=None):
     thr = choose_threshold_by_f1(y_val, val_proba)
     val_metrics = evaluate_probs(y_val, val_proba, thr)
     run_s = time.perf_counter() - t0
-    return xgb, {"val_metrics": val_metrics, "threshold": thr, "run_seconds": run_s}
+    xgb_info = {
+        "val_metrics": val_metrics, 
+        "threshold": thr, 
+        "run_seconds": run_s
+    }
+    return xgb, xgb_info
 
 
 # ----------------------------- feature selection experiments -----------------------------
-def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2, overrides=None):
+def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     t0 = time.perf_counter()
     pipe = Pipeline([
         ("select", SelectKBest(score_func=f_classif, k=25)),
-        ("xgb",    build_fixed_xgb(overrides)),
+        ("xgb",    build_fixed_xgb()),
     ])
     param_grid = {
         "select__k": [20, 25, "all"],
@@ -80,25 +81,27 @@ def exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2
     val_proba = best.predict_proba(X_val)[:, 1]
     thr = choose_threshold_by_f1(y_val, val_proba)
     run_s = time.perf_counter() - t0
-    return best, {
+    xgb_info = {
         "search_best_params": gs.best_params_,
         "val_metrics": evaluate_probs(y_val, val_proba, thr),
         "threshold": thr,
         "run_seconds": run_s,
     }
+    return best, xgb_info
 
 
-def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2, overrides=None):
+def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     t0 = time.perf_counter()
-    base_for_rfe = build_fixed_xgb(overrides)
+    base_for_rfe = build_fixed_xgb()
     pipe = Pipeline([
         ("rfe",  RFE(estimator=base_for_rfe, n_features_to_select=25, step=0.2)),
-        ("xgb",  build_fixed_xgb(overrides)),
+        ("xgb",  base_for_rfe),
     ])
     n_all = X_train.shape[1]
     param_grid = {
         "rfe__n_features_to_select": [20, 30, n_all],
     }
+    
     gs = GridSearchCV(
         pipe,
         param_grid=param_grid,
@@ -113,37 +116,45 @@ def exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2, o
     val_proba = best.predict_proba(X_val)[:, 1]
     thr = choose_threshold_by_f1(y_val, val_proba)
     run_s = time.perf_counter() - t0
-    return best, {
+    xgb_info = {
         "search_best_params": gs.best_params_,
         "val_metrics": evaluate_probs(y_val, val_proba, thr),
         "threshold": thr,
         "run_seconds": run_s,
     }
+    return best, xgb_info
 
-def exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2, overrides=None):
+def exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=5, n_jobs_grid=2):
     t0 = time.perf_counter()
+    base_for_em = build_fixed_xgb()
     pipe = Pipeline([
-        ("sfm", SelectFromModel(build_fixed_xgb(overrides), threshold="median")),
-        ("xgb", build_fixed_xgb(overrides)),
+        ("sfm", SelectFromModel(base_for_em, threshold="median")),
+        ("xgb", base_for_em),
     ])
     param_grid = {
         "sfm__threshold": ["median", "mean", 0.0],
     }
     gs = GridSearchCV(
-        pipe, param_grid=param_grid, scoring="roc_auc",
-        cv=make_cv(cv_folds), n_jobs=n_jobs_grid, verbose=2, pre_dispatch="1*n_jobs"
+        pipe, 
+        param_grid=param_grid, 
+        scoring="roc_auc",
+        cv=make_cv(cv_folds), 
+        n_jobs=n_jobs_grid, 
+        verbose=2, 
+        pre_dispatch="1*n_jobs"
     )
     gs.fit(X_train, y_train)
     best = gs.best_estimator_
     val_proba = best.predict_proba(X_val)[:, 1]
     thr = choose_threshold_by_f1(y_val, val_proba)
     run_s = time.perf_counter() - t0
-    return best, {
+    xgb_info = {
         "search_best_params": gs.best_params_,
         "val_metrics": evaluate_probs(y_val, val_proba, thr),
         "threshold": thr,
         "run_seconds": run_s,
     }
+    return best, xgb_info
 
 # ----------------------------- main -----------------------------
 def main():
@@ -159,17 +170,7 @@ def main():
     parser.add_argument("--best_json", default="", help="Optional path to tuned JSON with best_params to override")
     args = parser.parse_args()
 
-    overrides = None
-    if args.best_json and os.path.exists(args.best_json):
-        try:
-            with open(args.best_json, "r") as f:
-                blob = json.load(f)
-            overrides = blob.get("best_params", None)
-            if overrides:
-                print("[xgb] overriding fixed params from JSON best_params")
-        except Exception as e:
-            print(f"[warn] failed to read best_json: {e}")
-
+    # load data
     X_train, y_train, X_val, y_val, X_test, y_test = load_splits(args.data_dir)
     print(f"[data] train={X_train.shape} val={X_val.shape} test={X_test.shape}")
 
