@@ -1,3 +1,12 @@
+from .utils import (
+    set_seed, 
+    load_splits, 
+    choose_threshold_by_f1, 
+    make_cv, 
+    evaluate_probs, 
+    save_artifacts
+)
+
 from .churn.eda import (
     set_plot_theme,
     plot_missing_values,
@@ -6,15 +15,6 @@ from .churn.eda import (
     plot_pairs,
     plot_numerical_box,
     plot_correlation_heatmap,
-)
-
-from .utils import (
-    set_seed, 
-    load_splits, 
-    choose_threshold_by_f1, 
-    make_cv, 
-    evaluate_probs, 
-    save_artifacts
 )
 
 from .churn.eval import (
