@@ -180,7 +180,7 @@ def main():
     # Fixed XGB baseline
     if not args.skip_baseline:
         print("\n=== Fixed XGB (no hyperparam search) ===")
-        xgb_fixed, info = exp_fixed_xgb_baseline(X_train, y_train, X_val, y_val, overrides=overrides)
+        xgb_fixed, info = exp_fixed_xgb_baseline(X_train, y_train, X_val, y_val)
         info["test_metrics"] = evaluate_probs(y_test, xgb_fixed.predict_proba(X_test)[:, 1], info["threshold"])
         print("[XGB-fixed] val:", info["val_metrics"], "\n[XGB-fixed] test:", info["test_metrics"], f"\n[time] {info['run_seconds']:.2f}s")
         save_artifacts("xgb_fixed", xgb_fixed, X_train.columns, info, out_dir=args.models_dir)
@@ -189,7 +189,7 @@ def main():
     # Filter
     if args.run_filter:
         print("\n=== Filter: SelectKBest(f_classif) + Fixed XGB ===")
-        m, info = exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs, overrides=overrides)
+        m, info = exp_filter_selectk(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs)
         info["test_metrics"] = evaluate_probs(y_test, m.predict_proba(X_test)[:, 1], info["threshold"])
         print("[Filter] val:", info["val_metrics"], "\n[Filter] test:", info["test_metrics"], f"\n[time] {info['run_seconds']:.2f}s")
         save_artifacts("xgb_filter_selectk", m, X_train.columns, info, out_dir=args.models_dir)
@@ -198,7 +198,7 @@ def main():
     # Wrapper
     if args.run_wrapper:
         print("\n=== Wrapper: RFE + Fixed XGB ===")
-        m, info = exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs, overrides=overrides)
+        m, info = exp_wrapper_rfe(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs)
         info["test_metrics"] = evaluate_probs(y_test, m.predict_proba(X_test)[:, 1], info["threshold"])
         print("[Wrapper] val:", info["val_metrics"], "\n[Wrapper] test:", info["test_metrics"], f"\n[time] {info['run_seconds']:.2f}s")
         save_artifacts("xgb_wrapper_rfe", m, X_train.columns, info, out_dir=args.models_dir)
@@ -207,7 +207,7 @@ def main():
     # Embedded
     if args.run_embedded:
         print("\n=== Embedded: SelectFromModel(XGB) + Fixed XGB ===")
-        m, info = exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs, overrides=overrides)
+        m, info = exp_embedded_sfm(X_train, y_train, X_val, y_val, cv_folds=args.cv, n_jobs_grid=args.jobs)
         info["test_metrics"] = evaluate_probs(y_test, m.predict_proba(X_test)[:, 1], info["threshold"])
         print("[Embedded] val:", info["val_metrics"], "\n[Embedded] test:", info["test_metrics"], f"\n[time] {info['run_seconds']:.2f}s")
         save_artifacts("xgb_embedded_sfm", m, X_train.columns, info, out_dir=args.models_dir)
